@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
@@ -16,6 +17,7 @@ export class UserService {
   constructor(
     @InjectRepository(UserEntity)
     private userRepository: Repository<UserEntity>,
+    private jwtService: JwtService,
   ) {}
 
   async register(userData: UserSubscribeDto): Promise<Partial<UserEntity>> {
@@ -40,7 +42,7 @@ export class UserService {
     };
   }
 
-  async login(credentials: LoginCredentialsDto): Promise<Partial<UserEntity>> {
+  async login(credentials: LoginCredentialsDto) {
     //Recupere le login et le mot de passe
     const { username, password } = credentials;
     //On peut se logger ou via le username ou le password
@@ -58,10 +60,14 @@ export class UserService {
     //Si oui je vérifie est ce que le mot de passe est correct ou pas
     const hashedPassword = await bcrypt.hash(password, user.salt);
     if (hashedPassword === user.password) {
-      return {
+      const payload = {
         username: user.username,
         email: user.email,
         role: user.role,
+      };
+      const jwt = await this.jwtService.sign(payload);
+      return {
+        access_token: jwt,
       };
     } else {
       //Si mot de passe incorrect je déclenche une erreur
